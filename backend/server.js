@@ -7,6 +7,8 @@ import { errorHandler } from './middleware/auth.js';
 // Import routes
 import userRoutes from './routes/userRoutes.js';
 import jobRoutes from './routes/jobRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
+import freelancerMoneyRoutes from './routes/freelancerMoneyRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -53,6 +55,8 @@ connectDB().catch(error => {
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/freelancer-money', freelancerMoneyRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);

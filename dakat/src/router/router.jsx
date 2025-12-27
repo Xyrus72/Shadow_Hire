@@ -7,6 +7,7 @@ import Register from "../pages/Auth/Register/Register.jsx";
 import Profile from "../pages/Profile/Profile.jsx";
 import JobMatching from "../pages/JobMatching/JobMatching.jsx";
 import TaskDashboard from "../pages/TaskDashboard/TaskDashboard.jsx";
+import JobTasksPage from "../pages/JobTasksPage/JobTasksPage.jsx";
 import Payment from "../pages/Payment/Payment.jsx";
 import Chat from "../pages/Chat/Chat.jsx";
 import GadgetShop from "../pages/GadgetShop/GadgetShop.jsx";
@@ -51,6 +52,14 @@ export const router = createBrowserRouter([
         Component: () => (
           <ProtectedRoute>
             <TaskDashboard />
+          </ProtectedRoute>
+        )
+      },
+      { 
+        path: "job-tasks/:jobId", 
+        Component: () => (
+          <ProtectedRoute>
+            <JobTasksPage />
           </ProtectedRoute>
         )
       },

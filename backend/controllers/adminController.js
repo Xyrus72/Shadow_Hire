@@ -1,6 +1,6 @@
 import Announcement from '../models/Announcement.js';
 import Message from '../models/Message.js';
-import User from '../models/User.js';
+import User, { AdminUser, ClientUser, FreelancerUser } from '../models/User.js';
 import Payment from '../models/Payment.js';
 
 // ========== ANNOUNCEMENTS ==========
@@ -150,10 +150,36 @@ export const markMessageAsRead = async (req, res) => {
 // Get all users (Admin)
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    // Fetch users from all collections
+    const [adminUsers, clientUsers, freelancerUsers, regularUsers] = await Promise.all([
+      AdminUser.find().select('-password'),
+      ClientUser.find().select('-password'),
+      FreelancerUser.find().select('-password'),
+      User.find().select('-password')
+    ]);
+
+    // Combine all users and remove duplicates
+    const allUsers = [
+      ...adminUsers,
+      ...clientUsers,
+      ...freelancerUsers,
+      ...regularUsers
+    ];
+
+    // Remove duplicates by uid
+    const uniqueUsers = Array.from(
+      new Map(allUsers.map(user => [user.uid, user])).values()
+    );
+
     res.status(200).json({ 
       message: 'Users fetched successfully',
-      users 
+      users: uniqueUsers,
+      summary: {
+        total: uniqueUsers.length,
+        admins: adminUsers.length,
+        clients: clientUsers.length,
+        freelancers: freelancerUsers.length
+      }
     });
   } catch (error) {
     console.error('Error fetching users:', error);

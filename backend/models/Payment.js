@@ -11,7 +11,7 @@ const paymentSchema = new mongoose.Schema(
     currency: { type: String, default: 'USD' },
     
     // Status
-    status: { type: String, enum: ['pending', 'escrow', 'released', 'refunded'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'escrow', 'released', 'refunded', 'pending_approval', 'cancelled'], default: 'pending' },
     
     // Payment Method
     paymentMethod: { type: String, enum: ['card', 'bank', 'upi', 'crypto', 'wallet'], required: true },

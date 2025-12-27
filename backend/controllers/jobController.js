@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Job from '../models/Job.js';
+import ClientJobs from '../models/ClientJobs.js';
 import Chat from '../models/Chat.js';
 import User from '../models/User.js';
 import Task from '../models/Task.js';
@@ -8,6 +9,12 @@ export const createJob = async (req, res) => {
   try {
     const { title, description, category, requiredSkills, budgetType, budgetMin, budgetMax, totalBudget, deadline, estimatedHours, milestones, afterHoursOnly } = req.body;
     const clientId = req.user.id;
+
+    // Get client email
+    const client = await User.findById(clientId).select('email');
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
 
     // Process milestones with proper IDs
     const processedMilestones = milestones ? milestones.map(m => ({
@@ -18,6 +25,9 @@ export const createJob = async (req, res) => {
       dueDate: m.dueDate,
       status: 'pending'
     })) : [];
+
+    // Calculate total milestone price
+    const totalMilestonePrice = processedMilestones.reduce((sum, m) => sum + (m.payment || 0), 0);
 
     const newJob = new Job({
       clientId,
@@ -32,6 +42,8 @@ export const createJob = async (req, res) => {
       deadline,
       estimatedHours,
       milestones: processedMilestones,
+      milestoneCount: processedMilestones.length, // Store milestone count
+      totalMilestonePrice: totalMilestonePrice, // Store total milestone price
       paymentStatus: 'pending',
       adminApprovalStatus: 'pending',
       afterHoursOnly: afterHoursOnly !== false
@@ -39,6 +51,27 @@ export const createJob = async (req, res) => {
 
     await newJob.save();
     await newJob.populate('clientId', 'displayName photoURL');
+
+    // Create corresponding ClientJob entry
+    const clientJob = new ClientJobs({
+      jobId: newJob._id,
+      clientId: newJob.clientId,
+      clientEmail: client.email,
+      title: newJob.title,
+      description: newJob.description,
+      category: newJob.category,
+      requiredSkills: newJob.requiredSkills,
+      experienceLevel: newJob.experienceLevel,
+      totalBudget: newJob.totalBudget,
+      paymentStatus: newJob.paymentStatus,
+      status: newJob.status,
+      milestoneCount: processedMilestones.length, // Store milestone count
+      totalMilestonePrice: totalMilestonePrice, // Store total milestone price
+      attachments: newJob.attachments,
+      visibility: newJob.visibility
+    });
+
+    await clientJob.save();
 
     res.status(201).json({
       message: 'Job created successfully with milestones',
@@ -107,6 +140,54 @@ export const getClientAcceptedJobs = async (req, res) => {
       .limit(50);
 
     res.json(jobs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all jobs posted by the current client (from ClientJobs collection)
+export const getClientPostedJobs = async (req, res) => {
+  try {
+    const clientId = req.user.id;
+
+    // Get all jobs from ClientJobs collection for current client
+    const clientJobs = await ClientJobs.find({ clientId })
+      .populate('jobId')
+      .populate('assignedTo', 'displayName photoURL email averageRating')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: 'Client jobs fetched successfully',
+      jobs: clientJobs,
+      count: clientJobs.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get a specific client job with detailed info
+export const getClientJobDetail = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const clientId = req.user.id;
+
+    // Verify the job belongs to the current client
+    const clientJob = await ClientJobs.findOne({
+      jobId: jobId,
+      clientId: clientId
+    })
+      .populate('jobId')
+      .populate('assignedTo', 'displayName photoURL email averageRating');
+
+    if (!clientJob) {
+      return res.status(404).json({ error: 'Job not found or does not belong to you' });
+    }
+
+    res.status(200).json({
+      message: 'Client job details fetched successfully',
+      job: clientJob
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -506,41 +587,70 @@ export const acceptProposal = async (req, res) => {
     // Calculate deadline - use job deadline or default to 30 days from now
     const taskDeadline = job.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     
+    console.log('[acceptProposal] ===== CREATING TASKS =====')
+    console.log('[acceptProposal] jobId:', job._id)
+    console.log('[acceptProposal] freelancerId:', proposal.freelancerId)
+    console.log('[acceptProposal] clientId:', job.clientId)
+    console.log('[acceptProposal] Number of milestones:', job.milestones?.length || 0)
+    
     // If job has milestones, create a task for each milestone
     if (job.milestones && job.milestones.length > 0) {
-      for (const milestone of job.milestones) {
+      console.log('[acceptProposal] Creating task for each of', job.milestones.length, 'milestones')
+      const createdTaskIds = [];
+      for (let i = 0; i < job.milestones.length; i++) {
+        const milestone = job.milestones[i];
+        console.log(`[acceptProposal] Creating task ${i + 1}:`, {
+          title: `${job.title} - ${milestone.title}`,
+          estimatedBudget: milestone.payment || (job.totalBudget / job.milestones.length),
+          deadline: milestone.dueDate || taskDeadline
+        })
+        
         const milestoneTask = new Task({
           jobId: job._id,
           freelancerId: proposal.freelancerId,
+          clientId: job.clientId,
           title: `${job.title} - ${milestone.title}`,
           description: milestone.description || job.description,
-          status: 'accepted',
+          status: 'pending',
           clientApproved: true,
           clientApprovedAt: new Date(),
           estimatedHours: (job.estimatedHours || 8) / job.milestones.length,
+          estimatedBudget: milestone.payment || (job.totalBudget / job.milestones.length),
           deadline: milestone.dueDate || taskDeadline,
           milestone: milestone.title,
           progress: 0
         });
-        await milestoneTask.save();
+        const savedTask = await milestoneTask.save();
+        createdTaskIds.push(savedTask._id.toString());
+        console.log(`[acceptProposal] Task ${i + 1} saved with ID:`, savedTask._id)
       }
+      console.log('[acceptProposal] All', job.milestones.length, 'tasks created successfully with IDs:', createdTaskIds)
+      
+      // Verify tasks were actually saved
+      const verifyTasks = await Task.find({ jobId: job._id });
+      console.log('[acceptProposal] VERIFICATION: Found', verifyTasks.length, 'tasks in database for this job');
     } else {
       // If no milestones, create a single task
+      console.log('[acceptProposal] No milestones found, creating single task')
       const newTask = new Task({
         jobId: job._id,
         freelancerId: proposal.freelancerId,
+        clientId: job.clientId,
         title: job.title,
         description: job.description,
-        status: 'accepted',
+        status: 'pending',
         clientApproved: true,
         clientApprovedAt: new Date(),
         estimatedHours: job.estimatedHours || 8,
+        estimatedBudget: job.totalBudget,
         deadline: taskDeadline,
         milestone: '',
         progress: 0
       });
-      await newTask.save();
+      const savedTask = await newTask.save();
+      console.log('[acceptProposal] Single task created with ID:', savedTask._id)
     }
+    console.log('[acceptProposal] ===== TASK CREATION COMPLETE =====')
 
     // Create a chat conversation between client and freelancer
     const conversationId = [clientId, proposal.freelancerId.toString()].sort().join('_');

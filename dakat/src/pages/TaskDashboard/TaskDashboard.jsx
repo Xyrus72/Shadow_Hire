@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { taskAPI } from '../../services/api'
-import api from '../../services/api'
+import api, { getAuthToken } from '../../services/api'
 import useAuth from '../../hooks/useAuth'
 
 const TaskDashboard = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState({
     pending: [],
     accepted: [],
@@ -21,6 +23,7 @@ const TaskDashboard = () => {
   const [approvalRequests, setApprovalRequests] = useState([])
   const [freelancerEarnings, setFreelancerEarnings] = useState(0)
   const [showApprovalModal, setShowApprovalModal] = useState(null)
+  const [balance, setBalance] = useState(0)
 
   // Fetch tasks from backend
   useEffect(() => {
@@ -58,6 +61,14 @@ const TaskDashboard = () => {
         } catch (jobError) {
           console.error('Error fetching accepted jobs:', jobError)
         }
+
+        // Fetch balance
+        try {
+          const balanceData = await api.userAPI.getBalance()
+          setBalance(balanceData.availableBalance || 0)
+        } catch (balanceError) {
+          console.error('Error fetching balance:', balanceError)
+        }
       } catch (error) {
         console.error('Error fetching tasks:', error)
       } finally {
@@ -88,15 +99,6 @@ const TaskDashboard = () => {
           <div className="flex items-center gap-2">
             <span className="text-gray-500 text-xs">📅</span>
             <span className="text-gray-400 text-xs font-mono">{new Date(task.deadline).toLocaleDateString()}</span>
-          </div>
-        )}
-        
-        {task.estimatedHours && (
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-xs">⏱</span>
-            <span className="text-gray-400 text-xs font-mono">
-              {status === 'in_progress' || status === 'inProgress' ? `${task.actualHours || 0}/${task.estimatedHours}h` : `${task.estimatedHours}h`}
-            </span>
           </div>
         )}
 
@@ -137,8 +139,8 @@ const TaskDashboard = () => {
           </div>
           <div className="text-right space-y-2">
             <div>
-              <p className="text-2xl font-bold text-[#00ff41] font-mono">${freelancerEarnings}</p>
-              <p className="text-gray-400 text-sm font-mono">💰 Your Wallet</p>
+              <p className="text-2xl font-bold text-[#00ff41] font-mono">${balance.toFixed(2)}</p>
+              <p className="text-gray-400 text-sm font-mono">💰 Available Balance</p>
             </div>
             {approvalRequests.filter(r => r.status === 'pending_admin').length > 0 && (
               <div className="text-lg font-bold text-yellow-400 font-mono">
@@ -215,134 +217,15 @@ const TaskDashboard = () => {
                       📅 Deadline: {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => navigate(`/job-tasks/${job._id}`)}
+                    className="mt-4 w-full bg-[#00ff41] text-black font-bold py-2 rounded-lg hover:bg-[#00ff41]/80 transition-all font-mono text-sm"
+                  >
+                    ⚡ View Tasks ({job.milestones?.length || 0})
+                  </button>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Quick Stats */}
-        {!loading && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-            <div className="bg-[#1a1a1a] border border-[#00ff41]/20 rounded-lg p-4">
-              <p className="text-gray-400 text-xs font-mono mb-2">PENDING</p>
-              <p className="text-3xl font-bold text-yellow-400">{tasks.pending.length}</p>
-            </div>
-            <div className="bg-[#1a1a1a] border border-[#00ff41]/20 rounded-lg p-4">
-              <p className="text-gray-400 text-xs font-mono mb-2">ACCEPTED</p>
-              <p className="text-3xl font-bold text-cyan-400">{tasks.accepted.length}</p>
-            </div>
-            <div className="bg-[#1a1a1a] border border-[#00ff41]/20 rounded-lg p-4">
-              <p className="text-gray-400 text-xs font-mono mb-2">TO DO</p>
-              <p className="text-3xl font-bold text-red-400">{tasks.todo.length}</p>
-            </div>
-            <div className="bg-[#1a1a1a] border border-[#00ff41]/20 rounded-lg p-4">
-              <p className="text-gray-400 text-xs font-mono mb-2">IN PROGRESS</p>
-              <p className="text-3xl font-bold text-blue-400">{tasks.inProgress.length}</p>
-            </div>
-            <div className="bg-[#1a1a1a] border border-[#00ff41]/20 rounded-lg p-4">
-              <p className="text-gray-400 text-xs font-mono mb-2">COMPLETED</p>
-              <p className="text-3xl font-bold text-green-400">{tasks.done.length}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Kanban Board */}
-        {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Pending */}
-            <div className="bg-gradient-to-br from-[#0a0a0a] via-black to-[#050505] border border-[#00ff41]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,65,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#00ff41]/20">
-                <h3 className="text-white font-mono font-bold">PENDING</h3>
-                <span className="bg-yellow-500/20 text-yellow-400 text-xs font-mono px-2 py-1 rounded">{tasks.pending.length}</span>
-              </div>
-              <div className="space-y-3">
-                {tasks.pending.map(task => (
-                  <div key={task._id}>
-                    <TaskCard task={task} status="pending" canMove={false} />
-                  </div>
-                ))}
-                {tasks.pending.length === 0 && (
-                  <p className="text-gray-500 text-xs font-mono text-center py-4">No pending tasks</p>
-                )}
-              </div>
-            </div>
-
-            {/* Accepted */}
-            <div className="bg-gradient-to-br from-[#0a0a0a] via-black to-[#050505] border border-[#00ff41]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,65,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#00ff41]/20">
-                <h3 className="text-white font-mono font-bold">ACCEPTED</h3>
-                <span className="bg-cyan-500/20 text-cyan-400 text-xs font-mono px-2 py-1 rounded">{tasks.accepted.length}</span>
-              </div>
-              <div className="space-y-3">
-                {tasks.accepted.map(task => (
-                  <div key={task._id}>
-                    <TaskCard task={task} status="accepted" canMove={false} />
-                  </div>
-                ))}
-                {tasks.accepted.length === 0 && (
-                  <p className="text-gray-500 text-xs font-mono text-center py-4">No accepted tasks</p>
-                )}
-              </div>
-            </div>
-
-            {/* To Do */}
-            <div className="bg-gradient-to-br from-[#0a0a0a] via-black to-[#050505] border border-[#00ff41]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,65,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#00ff41]/20">
-                <h3 className="text-white font-mono font-bold">TO DO</h3>
-                <span className="bg-red-500/20 text-red-400 text-xs font-mono px-2 py-1 rounded">{tasks.todo.length}</span>
-              </div>
-              <div className="space-y-3">
-                {tasks.todo.map(task => (
-                  <div key={task._id}>
-                    <TaskCard task={task} status="todo" canMove={false} />
-                  </div>
-                ))}
-                {tasks.todo.length === 0 && (
-                  <p className="text-gray-500 text-xs font-mono text-center py-4">No todo tasks</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* In Progress and Done */}
-        {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {/* In Progress */}
-            <div className="bg-gradient-to-br from-[#0a0a0a] via-black to-[#050505] border border-[#00ff41]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,65,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#00ff41]/20">
-                <h3 className="text-white font-mono font-bold">IN PROGRESS</h3>
-                <span className="bg-blue-500/20 text-blue-400 text-xs font-mono px-2 py-1 rounded">{tasks.inProgress.length}</span>
-              </div>
-              <div className="space-y-3">
-                {tasks.inProgress.map(task => (
-                  <div key={task._id}>
-                    <TaskCard task={task} status="in_progress" canMove={false} />
-                  </div>
-                ))}
-                {tasks.inProgress.length === 0 && (
-                  <p className="text-gray-500 text-xs font-mono text-center py-4">No tasks in progress</p>
-                )}
-              </div>
-            </div>
-
-            {/* Done */}
-            <div className="bg-gradient-to-br from-[#0a0a0a] via-black to-[#050505] border border-[#00ff41]/30 rounded-xl shadow-[0_0_50px_rgba(0,255,65,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#00ff41]/20">
-                <h3 className="text-white font-mono font-bold">DONE</h3>
-                <span className="bg-green-500/20 text-green-400 text-xs font-mono px-2 py-1 rounded">{tasks.done.length}</span>
-              </div>
-              <div className="space-y-3">
-                {tasks.done.map(task => (
-                  <div key={task._id}>
-                    <TaskCard task={task} status="done" canMove={false} />
-                  </div>
-                ))}
-                {tasks.done.length === 0 && (
-                  <p className="text-gray-500 text-xs font-mono text-center py-4">No completed tasks</p>
-                )}
-              </div>
             </div>
           </div>
         )}

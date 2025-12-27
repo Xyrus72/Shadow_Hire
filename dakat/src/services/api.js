@@ -75,7 +75,8 @@ export const userAPI = {
   updateSkills: (skills) => apiCall('/users/skills', 'PUT', { skills }),
   updatePaymentMethod: (paymentMethod, paymentDetails) =>
     apiCall('/users/payment-method', 'PUT', { paymentMethod, paymentDetails }),
-  getPublicProfile: (userId) => apiCall(`/users/public/${userId}`, 'GET', null, false)
+  getPublicProfile: (userId) => apiCall(`/users/public/${userId}`, 'GET', null, false),
+  getBalance: () => apiCall('/users/balance', 'GET')
 };
 
 // Job APIs

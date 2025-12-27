@@ -4,11 +4,13 @@ const taskSchema = new mongoose.Schema(
   {
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
     freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     title: { type: String, required: true },
     description: { type: String, default: '' },
     
     // Milestone
     milestone: { type: String, default: '' },
+    estimatedBudget: { type: Number, default: 0 },
     
     // Status
     status: { type: String, enum: ['pending', 'accepted', 'todo', 'in_progress', 'done', 'blocked'], default: 'pending' },

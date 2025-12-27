@@ -32,6 +32,9 @@ const jobSchema = new mongoose.Schema(
       adminNotes: { type: String, default: null } // Admin approval notes
     }],
     
+    milestoneCount: { type: Number, default: 0 }, // Total number of milestones
+    totalMilestonePrice: { type: Number, default: 0 }, // Sum of all milestone payments
+    
     // Matching
     proposals: [{
       freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

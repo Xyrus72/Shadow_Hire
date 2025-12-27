@@ -290,3 +290,156 @@ export const releaseMilestonePayment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const processMilestonePayment = async (req, res) => {
+  try {
+    const { taskId, amount, jobId } = req.body;
+    const freelancerId = req.user.id;
+
+    // Verify job and freelancer
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.assignedTo?.toString() !== freelancerId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Update freelancer's balance
+    const user = await User.findById(freelancerId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.availableBalance = (user.availableBalance || 0) + amount;
+    user.totalEarnings = (user.totalEarnings || 0) + amount;
+    await user.save();
+
+    // Create payment record
+    const payment = new Payment({
+      jobId: jobId,
+      clientId: job.clientId,
+      freelancerId: freelancerId,
+      amount: amount,
+      paymentMethod: 'wallet',
+      milestone: taskId,
+      status: 'released',
+      description: `Milestone payment for task completion`
+    });
+
+    await payment.save();
+
+    res.status(201).json({
+      message: 'Milestone payment processed successfully',
+      payment,
+      newBalance: user.availableBalance
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+export const requestMilestonePayment = async (req, res) => {
+  try {
+    const { taskId, amount, jobId } = req.body;
+    const freelancerId = req.user.id;
+
+    // Verify task exists and belongs to freelancer
+    const Task = await import('../models/Task.js').then(m => m.default);
+    const task = await Task.findById(taskId);
+    
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    if (task.freelancerId.toString() !== freelancerId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Fetch the job to get clientId
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Create payment request (status: pending_approval)
+    const payment = new Payment({
+      jobId: jobId,
+      clientId: job.clientId,
+      freelancerId: freelancerId,
+      amount: amount,
+      paymentMethod: 'wallet',
+      milestone: taskId,
+      status: 'pending_approval',
+      description: `Payment request for milestone completion`
+    });
+
+    await payment.save();
+
+    res.status(201).json({
+      message: 'Payment request submitted for admin approval',
+      payment,
+      status: 'pending_approval'
+    });
+  } catch (error) {
+    console.error('[requestMilestonePayment] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const approvePaymentRequest = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Update payment status to released
+    payment.status = 'released';
+    await payment.save();
+
+    // Add money to freelancer's balance
+    const User = await import('../models/User.js').then(m => m.default);
+    const user = await User.findById(payment.freelancerId);
+    
+    if (user) {
+      user.availableBalance = (user.availableBalance || 0) + payment.amount;
+      user.totalEarnings = (user.totalEarnings || 0) + payment.amount;
+      await user.save();
+    }
+
+    res.json({
+      message: 'Payment approved and released',
+      payment,
+      newBalance: user?.availableBalance || 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const rejectPaymentRequest = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { reason } = req.body;
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Update payment status to refunded
+    payment.status = 'refunded';
+    await payment.save();
+
+    res.json({
+      message: 'Payment request rejected',
+      payment,
+      reason: reason || 'No reason provided'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

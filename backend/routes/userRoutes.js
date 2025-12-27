@@ -7,7 +7,8 @@ import {
   updateUser,
   updateSkills,
   updatePaymentMethod,
-  getPublicProfile
+  getPublicProfile,
+  getUserBalance
 } from '../controllers/userController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -17,7 +18,7 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/check-registration', checkRegistration);
 router.get('/profile', authenticateToken, getUser);
-router.put('/profile', authenticateToken, updateUser);
+router.get('/balance', authenticateToken, getUserBalance);router.put('/profile', authenticateToken, updateUser);
 router.put('/skills', authenticateToken, updateSkills);
 router.put('/payment-method', authenticateToken, updatePaymentMethod);
 router.get('/public/:userId', getPublicProfile);

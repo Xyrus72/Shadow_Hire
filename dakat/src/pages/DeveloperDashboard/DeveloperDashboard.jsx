@@ -64,12 +64,81 @@ const DeveloperDashboard = () => {
     }
   }
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'accepted': return 'bg-green-900/50 text-green-400 border-green-500/50'
-      case 'rejected': return 'bg-red-900/50 text-red-400 border-red-500/50'
-      case 'pending': return 'bg-yellow-900/50 text-yellow-400 border-yellow-500/50'
-      default: return 'bg-gray-900/50 text-gray-400 border-gray-500/50'
+  const handleStartMilestone = async (jobId, milestoneId) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(
+        `http://localhost:5000/api/freelancer-money/milestone/${jobId}/${milestoneId}/start`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      )
+      
+      if (response.ok) {
+        console.log('✅ Milestone started')
+        fetchDeveloperData() // Refresh data
+      } else {
+        console.error('Error starting milestone')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const handleCompleteMilestone = async (jobId, milestoneId) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(
+        `http://localhost:5000/api/freelancer-money/milestone/${jobId}/${milestoneId}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            submittedWork: 'Work submitted for review'
+          })
+        }
+      )
+      
+      if (response.ok) {
+        console.log('✅ Milestone completed')
+        fetchDeveloperData() // Refresh data
+      } else {
+        console.error('Error completing milestone')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const handleApproveMilestone = async (jobId, milestoneId) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(
+        `http://localhost:5000/api/freelancer-money/milestone/${jobId}/${milestoneId}/approve`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      )
+      
+      if (response.ok) {
+        console.log('✅ Milestone approved')
+        fetchDeveloperData() // Refresh data
+      } else {
+        console.error('Error approving milestone')
+      }
+    } catch (error) {
+      console.error('Error:', error)
     }
   }
 
@@ -295,10 +364,16 @@ const DeveloperDashboard = () => {
                               <h5 className="text-white font-mono font-bold text-sm">{milestone.title}</h5>
                               <span className="text-yellow-400 text-xs font-mono">→ {job.clientName}</span>
                             </div>
-                            <div className="flex justify-between items-center text-xs font-mono text-gray-400">
+                            <div className="flex justify-between items-center text-xs font-mono text-gray-400 mb-2">
                               {milestone.dueDate && <span>📅 {new Date(milestone.dueDate).toLocaleDateString()}</span>}
-                              <span>⏱ 0h</span>
+                              <span>💰 ${milestone.payment}</span>
                             </div>
+                            <button 
+                              onClick={() => handleStartMilestone(job._id, milestone._id)}
+                              className="w-full text-yellow-400 bg-yellow-900/30 hover:bg-yellow-900/50 font-mono text-xs py-2 rounded transition-all border border-yellow-500/30 hover:border-yellow-500/60"
+                            >
+                              ▶ START MILESTONE
+                            </button>
                           </div>
                         ))
                     )}
@@ -321,10 +396,16 @@ const DeveloperDashboard = () => {
                               <h5 className="text-white font-mono font-bold text-sm">{milestone.title}</h5>
                               <span className="text-blue-400 text-xs font-mono">→ {job.clientName}</span>
                             </div>
-                            <div className="flex justify-between items-center text-xs font-mono text-gray-400">
+                            <div className="flex justify-between items-center text-xs font-mono text-gray-400 mb-2">
                               {milestone.dueDate && <span>📅 {new Date(milestone.dueDate).toLocaleDateString()}</span>}
-                              <span>⏱ 3/6h</span>
+                              <span>💰 ${milestone.payment}</span>
                             </div>
+                            <button 
+                              onClick={() => handleCompleteMilestone(job._id, milestone._id)}
+                              className="w-full text-blue-400 bg-blue-900/30 hover:bg-blue-900/50 font-mono text-xs py-2 rounded transition-all border border-blue-500/30 hover:border-blue-500/60"
+                            >
+                              ✓ MARK COMPLETE
+                            </button>
                           </div>
                         ))
                     )}
@@ -337,7 +418,7 @@ const DeveloperDashboard = () => {
                   <div className="space-y-3">
                     {acceptedJobs.flatMap(job => 
                       (job.milestones || [])
-                        .filter(m => m.status === 'completed')
+                        .filter(m => m.status === 'completed' || m.status === 'approved')
                         .map(milestone => (
                           <div key={milestone._id} className="bg-black/40 border border-green-500/20 rounded p-3">
                             <div className="flex justify-between items-start mb-2">
@@ -345,7 +426,34 @@ const DeveloperDashboard = () => {
                               <span className="text-green-400 text-xs font-mono">→ {job.clientName}</span>
                             </div>
                             <div className="flex justify-between items-center text-xs font-mono text-gray-400">
-                              <span>⏱ {milestone.hoursWorked || 0}h</span>
+                              <span>💰 ${milestone.payment}</span>
+                              <span className="text-green-400">✓ {milestone.status === 'approved' ? 'PAID' : 'COMPLETED'}</span>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+
+                {/* AWAITING APPROVAL Column */}
+                <div className="bg-purple-900/10 border border-purple-500/30 rounded p-4">
+                  <h4 className="text-purple-400 font-mono font-bold mb-4">AWAITING APPROVAL</h4>
+                  <div className="space-y-3">
+                    {acceptedJobs.flatMap(job => 
+                      (job.milestones || [])
+                        .filter(m => m.status === 'submitted')
+                        .map(milestone => (
+                          <div key={milestone._id} className="bg-black/40 border border-purple-500/20 rounded p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <h5 className="text-white font-mono font-bold text-sm">{milestone.title}</h5>
+                              <span className="text-purple-400 text-xs font-mono">→ {job.clientName}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-mono text-gray-400 mb-2">
+                              {milestone.dueDate && <span>📅 {new Date(milestone.dueDate).toLocaleDateString()}</span>}
+                              <span>💰 ${milestone.payment}</span>
+                            </div>
+                            <div className="text-center text-purple-400 text-xs font-mono py-2 bg-purple-900/30 rounded">
+                              ⏳ Awaiting Client Approval
                             </div>
                           </div>
                         ))

@@ -4,6 +4,8 @@ import {
   getJobs,
   getJobById,
   getClientAcceptedJobs,
+  getClientPostedJobs,
+  getClientJobDetail,
   submitProposal,
   updateJobStatus,
   deleteJob,
@@ -56,6 +58,12 @@ router.get('/freelancer/accepted-jobs', authenticateToken, getAcceptedJobs);
 
 // Get client's accepted jobs (jobs where freelancer has been assigned)
 router.get('/client/accepted-jobs', authenticateToken, getClientAcceptedJobs);
+
+// Get all jobs posted by the current client (from ClientJobs collection)
+router.get('/client/my-jobs', authenticateToken, getClientPostedJobs);
+
+// Get a specific client job with detailed info
+router.get('/client/job/:jobId', authenticateToken, getClientJobDetail);
 
 // Get freelancer's proposals (all bids submitted)
 router.get('/freelancer/my-proposals', authenticateToken, getFreelancerProposals);

@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
     
     // Availability
     availableAfterHours: { type: Boolean, default: true },
-    workHourLimit: { type: Number, default: 8 }, // hours per day
+    workHourLimit: { type: Number, default: 8 },
     
     // Rating
     averageRating: { type: Number, default: 0 },
@@ -36,6 +36,7 @@ const userSchema = new mongoose.Schema(
     
     // Statistics
     totalEarnings: { type: Number, default: 0 },
+    availableBalance: { type: Number, default: 0 },
     projectsCompleted: { type: Number, default: 0 },
     totalHoursWorked: { type: Number, default: 0 },
     
@@ -54,4 +55,27 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model('User', userSchema);
+// Main User model - for login/registration (all users)
+const User = mongoose.model('User', userSchema, 'users');
+
+// Role-specific user models (for storing additional role-specific data)
+const AdminUser = mongoose.model('AdminUser', userSchema, 'admin_users');
+const ClientUser = mongoose.model('ClientUser', userSchema, 'client_users');
+const FreelancerUser = mongoose.model('FreelancerUser', userSchema, 'freelancer_users');
+
+// Function to get role-specific model
+export const getRoleSpecificModel = (userType) => {
+  switch(userType) {
+    case 'admin':
+      return AdminUser;
+    case 'client':
+      return ClientUser;
+    case 'freelancer':
+    default:
+      return FreelancerUser;
+  }
+};
+
+export { AdminUser, ClientUser, FreelancerUser };
+export default User;
+

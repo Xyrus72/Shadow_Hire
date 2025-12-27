@@ -1,4 +1,5 @@
 import Payment from '../models/Payment.js';
+import FreelancerPayment from '../models/FreelancerPayment.js';
 import Job from '../models/Job.js';
 import User from '../models/User.js';
 
@@ -243,25 +244,37 @@ export const releaseMilestonePayment = async (req, res) => {
     const { jobId, milestoneId } = req.params;
     const adminId = req.user.id;
 
-    const job = await Job.findById(jobId).populate('freelancerId clientId');
+    console.log('[releaseMilestonePayment] Processing payment for job:', jobId, 'milestone:', milestoneId);
+
+    const job = await Job.findById(jobId).populate('assignedTo clientId');
     if (!job) {
+      console.error('[releaseMilestonePayment] Job not found:', jobId);
       return res.status(404).json({ error: 'Job not found' });
     }
+    console.log('[releaseMilestonePayment] Job found:', job._id, 'assignedTo:', job.assignedTo);
 
-    const milestone = job.milestones.id(milestoneId);
+    const milestone = job.milestones.find(m => m._id.toString() === milestoneId);
     if (!milestone) {
+      console.error('[releaseMilestonePayment] Milestone not found:', milestoneId, 'in milestones:', job.milestones.map(m => m._id));
       return res.status(404).json({ error: 'Milestone not found' });
     }
+    console.log('[releaseMilestonePayment] Milestone found:', milestone._id, 'status:', milestone.status);
 
     if (milestone.status !== 'approved') {
+      console.error('[releaseMilestonePayment] Milestone not approved, status:', milestone.status);
       return res.status(400).json({ error: 'Only approved milestones can be paid' });
+    }
+
+    if (!job.assignedTo) {
+      console.error('[releaseMilestonePayment] No freelancer assigned to this job');
+      return res.status(400).json({ error: 'No freelancer assigned to this job' });
     }
 
     // Create payment record for this milestone
     const payment = new Payment({
       jobId,
       clientId: job.clientId._id,
-      freelancerId: job.assignedTo,
+      freelancerId: job.assignedTo._id,
       amount: milestone.payment,
       status: 'released',
       milestone: milestone.title,
@@ -269,17 +282,41 @@ export const releaseMilestonePayment = async (req, res) => {
     });
 
     await payment.save();
+    console.log('[releaseMilestonePayment] Payment record created:', payment._id);
 
-    // Update freelancer's total earnings
-    const freelancer = await User.findById(job.assignedTo);
+    // Create FreelancerPayment record for freelancer tracking
+    const freelancerPayment = new FreelancerPayment({
+      freelancerId: job.assignedTo._id,
+      jobId,
+      clientId: job.clientId._id,
+      milestoneId,
+      jobTitle: job.title,
+      amount: milestone.payment,
+      paymentStatus: 'completed',
+      milestoneName: milestone.title,
+      milestoneStatus: 'approved',
+      completedAt: new Date(),
+      description: `Milestone payment for: ${milestone.title}`
+    });
+
+    await freelancerPayment.save();
+    console.log('[releaseMilestonePayment] FreelancerPayment record created:', freelancerPayment._id);
+
+    // Update freelancer's total earnings and available balance
+    const freelancer = await User.findById(job.assignedTo._id);
     if (freelancer) {
       freelancer.totalEarnings = (freelancer.totalEarnings || 0) + milestone.payment;
+      freelancer.availableBalance = (freelancer.availableBalance || 0) + milestone.payment;
       await freelancer.save();
+      console.log('[releaseMilestonePayment] Updated freelancer earnings:', freelancer.totalEarnings, 'balance:', freelancer.availableBalance);
+    } else {
+      console.error('[releaseMilestonePayment] Freelancer not found:', job.assignedTo._id);
     }
 
     // Mark milestone as completed
     milestone.status = 'completed';
     await job.save();
+    console.log('[releaseMilestonePayment] Job saved with completed milestone');
 
     res.json({
       message: 'Milestone payment released successfully',
@@ -287,7 +324,9 @@ export const releaseMilestonePayment = async (req, res) => {
       milestone
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[releaseMilestonePayment] Error:', error.message);
+    console.error('[releaseMilestonePayment] Stack:', error.stack);
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 };
 

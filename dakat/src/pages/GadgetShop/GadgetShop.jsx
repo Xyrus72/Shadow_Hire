@@ -5,6 +5,7 @@ const GadgetShop = () => {
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState([])
   const [filterCategory, setFilterCategory] = useState('all')
+  const [freelancerBalance, setFreelancerBalance] = useState(2450)
 
   const gadgets = [
     {
@@ -110,7 +111,26 @@ const GadgetShop = () => {
     : gadgets.filter(g => g.category === filterCategory)
 
   const addToCart = (gadget) => {
+    if (gadget.discountedPrice > freelancerBalance - getTotalPrice()) {
+      alert(`❌ Insufficient balance! You need $${gadget.discountedPrice} but have $${(freelancerBalance - getTotalPrice()).toFixed(2)} remaining.`)
+      return
+    }
     setCartItems([...cartItems, gadget])
+  }
+
+  const removeFromCart = (index) => {
+    setCartItems(cartItems.filter((_, i) => i !== index))
+  }
+
+  const checkout = () => {
+    const total = getTotalPrice()
+    if (total > freelancerBalance) {
+      alert('❌ Insufficient balance!')
+      return
+    }
+    setFreelancerBalance(freelancerBalance - total)
+    alert(`✅ Purchase successful! ${cartItems.length} item${cartItems.length > 1 ? 's' : ''} purchased for $${total}. New balance: $${(freelancerBalance - total).toFixed(2)}`)
+    setCartItems([])
   }
 
   const getTotalSavings = () => {
@@ -126,20 +146,35 @@ const GadgetShop = () => {
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-white font-mono mb-4">
-            <span className="text-[#00ff41]">🛍️</span> Gadget Discount Shop
-          </h1>
-          <p className="text-gray-400 font-mono mb-6">Exclusive discounts for Shadow Hire workers</p>
-          
-          <div className="inline-block bg-[#00ff41]/10 border border-[#00ff41]/30 rounded-lg px-4 py-2">
-            <p className="text-[#00ff41] font-mono text-sm">✨ 20-45% OFF on all products • Registered workers only</p>
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-white font-mono mb-4">
+                <span className="text-[#00ff41]">🛍️</span> Gadget Discount Shop
+              </h1>
+              <p className="text-gray-400 font-mono mb-6">Exclusive discounts for Shadow Hire workers</p>
+              
+              <div className="inline-block bg-[#00ff41]/10 border border-[#00ff41]/30 rounded-lg px-4 py-2">
+                <p className="text-[#00ff41] font-mono text-sm">✨ 20-45% OFF on all products • Registered workers only</p>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-[#00ff41]/20 to-[#00ff41]/5 border border-[#00ff41]/50 rounded-lg p-6 text-right">
+              <p className="text-gray-400 font-mono text-sm mb-2">YOUR WALLET BALANCE</p>
+              <p className="text-3xl font-bold text-[#00ff41] font-mono">${freelancerBalance.toFixed(2)}</p>
+              <p className="text-gray-500 font-mono text-xs mt-2">💰 Earned from completed tasks</p>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="mt-3 px-3 py-1 text-xs bg-[#00ff41] text-black font-mono rounded hover:bg-[#0df0a0] transition-all"
+              >
+                View Tasks
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Cart Summary */}
         {cartItems.length > 0 && (
           <div className="bg-gradient-to-r from-[#00ff41]/10 via-transparent to-[#00ff41]/10 border border-[#00ff41]/30 rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-gray-400 font-mono mb-2">CART SUMMARY</p>
                 <div className="flex gap-12">
@@ -155,14 +190,45 @@ const GadgetShop = () => {
                     <p className="text-purple-400 font-mono font-bold">{cartItems.length}</p>
                     <p className="text-xs text-gray-400 font-mono">Items</p>
                   </div>
+                  <div>
+                    <p className={`font-mono font-bold ${getTotalPrice() > freelancerBalance ? 'text-red-400' : 'text-green-400'}`}>
+                      ${(freelancerBalance - getTotalPrice()).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400 font-mono">Remaining</p>
+                  </div>
                 </div>
               </div>
               <button
-                onClick={() => navigate('/checkout')}
-                className="px-8 py-3 bg-[#00ff41] text-black font-mono font-bold rounded-lg hover:bg-[#0df0a0] transition-all"
+                onClick={checkout}
+                disabled={getTotalPrice() > freelancerBalance}
+                className="px-8 py-3 bg-[#00ff41] text-black font-mono font-bold rounded-lg hover:bg-[#0df0a0] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Checkout
+                {getTotalPrice() > freelancerBalance ? '❌ Insufficient Balance' : 'Checkout'}
               </button>
+            </div>
+
+            {/* Cart Items List */}
+            <div className="mt-4 pt-4 border-t border-[#00ff41]/30">
+              <p className="text-gray-400 font-mono text-sm mb-3">ITEMS IN CART:</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {cartItems.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-black/50 p-2 rounded">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-2xl">{item.image}</span>
+                      <div>
+                        <p className="text-white font-mono text-sm">{item.name}</p>
+                        <p className="text-gray-500 text-xs font-mono">${item.discountedPrice}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeFromCart(idx)}
+                      className="px-2 py-1 text-red-400 hover:bg-red-600/20 rounded text-xs"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

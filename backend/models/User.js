@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     displayName: { type: String, required: true },
     photoURL: { type: String, default: null },
-    userType: { type: String, enum: ['freelancer', 'client', 'both'], default: 'freelancer' },
+    userType: { type: String, enum: ['freelancer', 'client', 'both', 'admin'], default: 'freelancer' },
     
     // Profile
     bio: { type: String, default: '' },

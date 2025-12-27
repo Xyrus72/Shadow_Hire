@@ -88,12 +88,30 @@ export const jobAPI = {
   getJobById: (jobId) => apiCall(`/jobs/${jobId}`, 'GET', null, false),
   submitProposal: (jobId, proposalData) =>
     apiCall(`/jobs/${jobId}/proposal`, 'POST', proposalData),
-  acceptProposal: (jobId, proposalIndex) =>
-    apiCall(`/jobs/${jobId}/proposal/${proposalIndex}/accept`, 'POST'),
+  acceptProposal: (jobId, proposalId) =>
+    apiCall(`/jobs/${jobId}/proposal/${proposalId}/accept`, 'POST'),
+  rejectProposal: (jobId, proposalId) =>
+    apiCall(`/jobs/${jobId}/proposal/${proposalId}/reject`, 'POST'),
+  getFreelancerProposals: () =>
+    apiCall('/jobs/freelancer/my-proposals', 'GET'),
+  getAcceptedJobs: () =>
+    apiCall('/jobs/freelancer/accepted-jobs', 'GET'),
+  getClientAcceptedJobs: () =>
+    apiCall('/jobs/client/accepted-jobs', 'GET'),
+  getJobProposals: (jobId) =>
+    apiCall(`/jobs/${jobId}/proposals`, 'GET'),
   updateJobStatus: (jobId, status) =>
     apiCall(`/jobs/${jobId}/status`, 'PUT', { status }),
   deleteJob: (jobId) => apiCall(`/jobs/${jobId}`, 'DELETE'),
-  searchJobs: (query) => apiCall(`/jobs/search?query=${query}`, 'GET', null, false)
+  searchJobs: (query) => apiCall(`/jobs/search?query=${query}`, 'GET', null, false),
+  
+  // Milestone APIs
+  submitMilestone: (jobId, milestoneId, submittedWork) =>
+    apiCall(`/jobs/${jobId}/milestone/${milestoneId}/submit`, 'POST', { submittedWork }),
+  approveMilestone: (jobId, milestoneId, adminNotes) =>
+    apiCall(`/jobs/${jobId}/milestone/${milestoneId}/approve`, 'POST', { adminNotes }),
+  rejectMilestone: (jobId, milestoneId, adminNotes) =>
+    apiCall(`/jobs/${jobId}/milestone/${milestoneId}/reject`, 'POST', { adminNotes })
 };
 
 // Task APIs
@@ -108,7 +126,8 @@ export const taskAPI = {
   addTimeEntry: (taskId, entryData) =>
     apiCall(`/tasks/${taskId}/time-entry`, 'POST', entryData),
   deleteTask: (taskId) => apiCall(`/tasks/${taskId}`, 'DELETE'),
-  getBurnoutWarning: () => apiCall('/tasks/burnout-warning', 'GET')
+  getBurnoutWarning: () => apiCall('/tasks/burnout-warning', 'GET'),
+  getAcceptedTasksCount: () => apiCall('/tasks/count/accepted', 'GET')
 };
 
 // Chat APIs
@@ -139,7 +158,9 @@ export const paymentAPI = {
     apiCall('/payments/refund', 'POST', { paymentId, reason }),
   getEarnings: () => apiCall('/payments/earnings', 'GET'),
   withdrawEarnings: (amount, paymentMethod) =>
-    apiCall('/payments/withdraw', 'POST', { amount, paymentMethod })
+    apiCall('/payments/withdraw', 'POST', { amount, paymentMethod }),
+  releaseMilestonePayment: (jobId, milestoneId) =>
+    apiCall(`/payments/milestone/${jobId}/${milestoneId}/release`, 'POST')
 };
 
 // Rating APIs

@@ -195,3 +195,98 @@ export const withdrawEarnings = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+export const createReleaseRequest = async (req, res) => {
+  try {
+    const { jobId, freelancerId, amount, clientId } = req.body;
+    const userId = req.user.id;
+
+    // Verify the client is making this request
+    if (clientId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Verify job exists and belongs to this client
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    if (job.clientId.toString() !== userId) {
+      return res.status(403).json({ error: 'This job does not belong to you' });
+    }
+
+    // Create a payment record with status 'pending_approval'
+    const payment = new Payment({
+      jobId,
+      clientId,
+      freelancerId,
+      amount,
+      status: 'pending_approval',
+      milestone: 'Milestone Payment',
+      invoiceNumber: `REL-${Date.now()}`
+    });
+
+    await payment.save();
+
+    res.status(201).json({
+      message: 'Fund release request submitted to admin for approval',
+      payment
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Release payment for approved milestone
+export const releaseMilestonePayment = async (req, res) => {
+  try {
+    const { jobId, milestoneId } = req.params;
+    const adminId = req.user.id;
+
+    const job = await Job.findById(jobId).populate('freelancerId clientId');
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const milestone = job.milestones.id(milestoneId);
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+
+    if (milestone.status !== 'approved') {
+      return res.status(400).json({ error: 'Only approved milestones can be paid' });
+    }
+
+    // Create payment record for this milestone
+    const payment = new Payment({
+      jobId,
+      clientId: job.clientId._id,
+      freelancerId: job.assignedTo,
+      amount: milestone.payment,
+      status: 'released',
+      milestone: milestone.title,
+      invoiceNumber: `MS-${jobId}-${milestoneId}-${Date.now()}`
+    });
+
+    await payment.save();
+
+    // Update freelancer's total earnings
+    const freelancer = await User.findById(job.assignedTo);
+    if (freelancer) {
+      freelancer.totalEarnings = (freelancer.totalEarnings || 0) + milestone.payment;
+      await freelancer.save();
+    }
+
+    // Mark milestone as completed
+    milestone.status = 'completed';
+    await job.save();
+
+    res.json({
+      message: 'Milestone payment released successfully',
+      payment,
+      milestone
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

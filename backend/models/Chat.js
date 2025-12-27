@@ -24,4 +24,10 @@ const chatSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Create indexes for faster queries
+chatSchema.index({ participants: 1 });
+chatSchema.index({ conversationId: 1 });
+chatSchema.index({ jobId: 1 });
+chatSchema.index({ lastMessageTime: -1 });
+
 export default mongoose.model('Chat', chatSchema);

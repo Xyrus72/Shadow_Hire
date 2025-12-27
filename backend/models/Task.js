@@ -11,7 +11,11 @@ const taskSchema = new mongoose.Schema(
     milestone: { type: String, default: '' },
     
     // Status
-    status: { type: String, enum: ['todo', 'in_progress', 'done', 'blocked'], default: 'todo' },
+    status: { type: String, enum: ['pending', 'accepted', 'todo', 'in_progress', 'done', 'blocked'], default: 'pending' },
+    
+    // Client acceptance
+    clientApproved: { type: Boolean, default: false },
+    clientApprovedAt: { type: Date, default: null },
     
     // Time Tracking
     estimatedHours: { type: Number, required: true },

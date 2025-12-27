@@ -9,7 +9,6 @@ const JobApplicationModal = ({ jobId, onClose, onSuccess }) => {
   const [userSkills, setUserSkills] = useState([])
   const [matchPercentage, setMatchPercentage] = useState(0)
   const [proposal, setProposal] = useState('')
-  const [bidAmount, setBidAmount] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -51,13 +50,8 @@ const JobApplicationModal = ({ jobId, onClose, onSuccess }) => {
   const handleApply = async (e) => {
     e.preventDefault()
     
-    if (!bidAmount) {
-      setError('Please enter your bid amount')
-      return
-    }
-
     if (!proposal.trim()) {
-      setError('Please write a cover letter')
+      setError('Please write a proposal/cover letter')
       return
     }
 
@@ -66,7 +60,6 @@ const JobApplicationModal = ({ jobId, onClose, onSuccess }) => {
       setError('')
       
       await jobAPI.submitProposal(jobId, {
-        bidAmount: parseFloat(bidAmount),
         coverLetter: proposal
       })
       
@@ -220,21 +213,6 @@ const JobApplicationModal = ({ jobId, onClose, onSuccess }) => {
 
         {/* Application Form */}
         <form onSubmit={handleApply} className="space-y-4">
-          {/* Bid Amount */}
-          <div>
-            <label className="block text-[#00ff41] font-mono text-xs uppercase mb-2">Your Bid Amount ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={bidAmount}
-              onChange={(e) => setBidAmount(e.target.value)}
-              placeholder="Enter your bid amount"
-              className="w-full px-4 py-2 rounded-lg bg-[#0a0a0a] border border-[#00ff41]/20 text-white font-mono text-sm placeholder-gray-600 focus:border-[#00ff41] focus:outline-none"
-              required
-            />
-          </div>
-
           {/* Cover Letter */}
           <div>
             <label className="block text-[#00ff41] font-mono text-xs uppercase mb-2">Cover Letter</label>

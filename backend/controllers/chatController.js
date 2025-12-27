@@ -19,7 +19,10 @@ export const createOrGetConversation = async (req, res) => {
       await chat.save();
     }
 
-    await chat.populate('participants', 'displayName photoURL');
+    chat = await Chat.findOne({ conversationId })
+      .populate('participants', 'displayName photoURL email')
+      .populate('messages.senderId', 'displayName photoURL')
+      .populate('jobId', 'title');
 
     res.json(chat);
   } catch (error) {
@@ -32,7 +35,9 @@ export const getConversations = async (req, res) => {
     const userId = req.user.id;
 
     const chats = await Chat.find({ participants: userId })
-      .populate('participants', 'displayName photoURL')
+      .populate('participants', 'displayName photoURL email')
+      .populate('messages.senderId', 'displayName photoURL')
+      .populate('jobId', 'title')
       .sort({ lastMessageTime: -1 });
 
     res.json(chats);

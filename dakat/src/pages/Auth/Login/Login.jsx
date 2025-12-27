@@ -65,9 +65,11 @@ const Login = () => {
 
       // Redirect to appropriate dashboard based on user type
       if (data.user.userType === 'freelancer') {
-        navigate('/developer-dashboard')
+        navigate('/dashboard')
       } else if (data.user.userType === 'client') {
         navigate('/client-dashboard')
+      } else if (data.user.userType === 'admin') {
+        navigate('/admin')
       } else {
         navigate('/profile')
       }
@@ -133,9 +135,11 @@ const Login = () => {
 
       // Redirect to appropriate dashboard
       if (data.user.userType === 'freelancer') {
-        navigate('/developer-dashboard')
+        navigate('/dashboard')
       } else if (data.user.userType === 'client') {
         navigate('/client-dashboard')
+      } else if (data.user.userType === 'admin') {
+        navigate('/admin')
       } else {
         navigate('/profile')
       }

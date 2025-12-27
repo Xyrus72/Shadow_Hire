@@ -6,7 +6,8 @@ import {
   updateTask,
   addTimeEntry,
   deleteTask,
-  getBurnoutWarning
+  getBurnoutWarning,
+  getAcceptedTasksCount
 } from '../controllers/taskController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -14,6 +15,8 @@ const router = express.Router();
 
 router.post('/', authenticateToken, createTask);
 router.get('/', authenticateToken, getTasks);
+router.get('/freelancer/:freelancerId', getTasks);
+router.get('/count/accepted', authenticateToken, getAcceptedTasksCount);
 router.get('/burnout-warning', authenticateToken, getBurnoutWarning);
 router.get('/:taskId', authenticateToken, getTaskById);
 router.put('/:taskId', authenticateToken, updateTask);

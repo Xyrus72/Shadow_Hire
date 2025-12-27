@@ -12,6 +12,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/shop', shopRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,11 +1,56 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuth from '../../../hooks/useAuth'
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const [taskCount, setTaskCount] = useState(0)
   const { user, userPhoto, logout } = useAuth()
   const navigate = useNavigate()
+  
+  // Get user type from localStorage
+  const getUserType = () => {
+    try {
+      const shadowUser = localStorage.getItem('shadowUser')
+      if (shadowUser) {
+        return JSON.parse(shadowUser).userType
+      }
+    } catch (error) {
+      console.error('Error getting user type:', error)
+    }
+    return null
+  }
+  
+  const userType = getUserType()
+
+  // Fetch accepted tasks count for freelancer
+  useEffect(() => {
+    const fetchTaskCount = async () => {
+      if (userType === 'freelancer' && user) {
+        try {
+          const token = localStorage.getItem('authToken')
+          const response = await fetch('http://localhost:5000/api/tasks/count/accepted', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setTaskCount(data.count || 0)
+          }
+        } catch (error) {
+          console.error('Error fetching task count:', error)
+        }
+      }
+    }
+
+    fetchTaskCount()
+    // Refresh task count every 10 seconds
+    const interval = setInterval(fetchTaskCount, 10000)
+    return () => clearInterval(interval)
+  }, [user, userType])
 
   const handleLogout = () => {
     logout()
@@ -111,16 +156,19 @@ const Navbar = () => {
           ${isOpen ? 'flex' : 'hidden'} 
           flex-col absolute top-[70px] left-0 w-full bg-black/98 p-8 gap-6 border-t-2 border-[#00ff41]
         `}>
-          <li className="group">
-            <Link to="/" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
-              <span>&gt;</span>
-              <span>Home</span>
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
-            </Link>
-          </li>
+          {/* Home - Only show when NOT freelancer */}
+          {!user || userType !== 'freelancer' ? (
+            <li className="group">
+              <Link to="/" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
+                <span>&gt;</span>
+                <span>Home</span>
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
+              </Link>
+            </li>
+          ) : null}
           
-          {/* Premium Features - Only show when logged in */}
-          {user && (
+          {/* Premium Features - Only show when logged in as FREELANCER */}
+          {user && userType === 'freelancer' && (
             <>
               <li className="group">
                 <Link to="/jobs" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
@@ -136,17 +184,15 @@ const Navbar = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
                 </Link>
               </li>
-              <li className="group">
+              <li className="group relative">
                 <Link to="/dashboard" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
                   <span>&gt;</span>
                   <span>📋 Tasks</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link to="/chat" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
-                  <span>&gt;</span>
-                  <span>💬 Chat</span>
+                  {taskCount > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-red-500 text-black font-bold text-xs rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.8)]">
+                      {taskCount}
+                    </span>
+                  )}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
                 </Link>
               </li>
@@ -158,13 +204,6 @@ const Navbar = () => {
                 </Link>
               </li>
               <li className="group">
-                <Link to="/ratings" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
-                  <span>&gt;</span>
-                  <span>⭐ Reviews</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
-                </Link>
-              </li>
-              <li className="group">
                 <Link to="/shop" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
                   <span>&gt;</span>
                   <span>🛍️ Shop</span>
@@ -172,55 +211,64 @@ const Navbar = () => {
                 </Link>
               </li>
               <li className="group">
-                <Link to="/support" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
+                <Link to="/chat" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-cyan-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
                   <span>&gt;</span>
-                  <span>🤖 Help</span>
+                  <span>💬 Chat</span>
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-cyan-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
                 </Link>
               </li>
             </>
           )}
           
-          {/* Role-Specific Dashboards - Only show when logged in */}
-          {user && (
+          {/* Client Dashboard Link - Show only for clients */}
+          {user && userType === 'client' && (
             <>
-              <li className="group">
-                <Link to="/admin" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-purple-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
-                  <span>&gt;</span>
-                  <span>👑 Admin</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-purple-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
-                </Link>
-              </li>
-              <li className="group">
-                <Link to="/developer-dashboard" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-blue-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
-                  <span>&gt;</span>
-                  <span>👨‍💻 Dev Panel</span>
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-blue-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
-                </Link>
-              </li>
               <li className="group">
                 <Link to="/client-dashboard" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-orange-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
                   <span>&gt;</span>
-                  <span>💼 Client</span>
+                  <span>💼 Client Panel</span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-orange-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
+                </Link>
+              </li>
+              <li className="group">
+                <Link to="/chat" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-orange-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
+                  <span>&gt;</span>
+                  <span>💬 Chat</span>
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-orange-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
                 </Link>
               </li>
             </>
           )}
+          
+          {/* Role-Specific Dashboards - Show based on user role */}
+          {user && userType === 'admin' && (
+            <>
+              <li className="group">
+                <Link to="/admin" className="relative text-[#00ff41] font-mono text-base font-medium hover:text-purple-400 transition-all duration-300 hover:translate-x-1 flex items-center gap-2">
+                  <span>&gt;</span>
+                  <span>👑 Admin Panel</span>
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-[#00ff41] to-purple-400 shadow-[0_0_5px_#00ff41] group-hover:w-full transition-all duration-400"></span>
+                </Link>
+              </li>
+            </>
+          )}
+          
           {user ? (
             // Authenticated User Menu
             <li className="flex items-center gap-4 md:border-l-2 md:border-[#00ff41]/30 md:pl-6">
-              <Link 
-                to="/profile"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <img 
-                  src={userPhoto} 
-                  alt={user.displayName} 
-                  className="w-8 h-8 rounded-full border-2 border-[#00ff41] shadow-[0_0_10px_rgba(0,255,65,0.5)]"
-                />
-                <span className="hidden md:inline text-[#00ff41] font-mono text-sm font-medium">{user.displayName || 'Profile'}</span>
-              </Link>
+              {userType !== 'admin' && (
+                <Link 
+                  to="/profile"
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  <img 
+                    src={userPhoto} 
+                    alt={user.displayName} 
+                    className="w-8 h-8 rounded-full border-2 border-[#00ff41] shadow-[0_0_10px_rgba(0,255,65,0.5)]"
+                  />
+                  <span className="hidden md:inline text-[#00ff41] font-mono text-sm font-medium">{user.displayName || 'Profile'}</span>
+                </Link>
+              )}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 md:px-6 md:py-3 bg-transparent border-2 border-red-500 text-red-500 font-mono font-bold text-sm hover:bg-red-500 hover:text-black transition-all duration-300 shadow-[0_0_10px_rgba(239,68,68,0.3)] hover:shadow-[0_0_20px_rgba(239,68,68,0.6)]"

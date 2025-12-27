@@ -33,7 +33,12 @@ const AuthProvider = ({children}) => {
 
     const logout = () => {
         setLoading(true);
-        return signOut(auth);
+        return signOut(auth).then(() => {
+            // Clear localStorage when logging out
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('shadowUser');
+            localStorage.removeItem('firebaseUser');
+        });
     }
 
     useEffect(() => {
@@ -41,9 +46,17 @@ const AuthProvider = ({children}) => {
             if(currentUser) {
                 setUser(currentUser);
                 setUserPhoto(currentUser.photoURL || DEFAULT_AVATAR);
+                // Persist user data to localStorage
+                localStorage.setItem('firebaseUser', JSON.stringify({
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName,
+                    photoURL: currentUser.photoURL || DEFAULT_AVATAR
+                }));
             } else {
                 setUser(null);
                 setUserPhoto(null);
+                localStorage.removeItem('firebaseUser');
             }
             setLoading(false);
         });

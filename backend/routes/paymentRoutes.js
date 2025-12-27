@@ -6,7 +6,9 @@ import {
   releasePayment,
   refundPayment,
   getEarnings,
-  withdrawEarnings
+  withdrawEarnings,
+  createReleaseRequest,
+  releaseMilestonePayment
 } from '../controllers/paymentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -19,5 +21,7 @@ router.get('/:paymentId', authenticateToken, getPaymentById);
 router.post('/:paymentId/release', authenticateToken, releasePayment);
 router.post('/refund', authenticateToken, refundPayment);
 router.post('/withdraw', authenticateToken, withdrawEarnings);
+router.post('/release-request', authenticateToken, createReleaseRequest);
+router.post('/milestone/:jobId/:milestoneId/release', authenticateToken, releaseMilestonePayment);
 
 export default router;

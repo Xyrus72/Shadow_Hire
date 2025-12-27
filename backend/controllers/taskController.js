@@ -29,14 +29,21 @@ export const createTask = async (req, res) => {
 export const getTasks = async (req, res) => {
   try {
     const { jobId, status, userId } = req.query;
+    const authenticatedUserId = req.user.id;
     const filter = {};
 
     if (jobId) filter.jobId = jobId;
     if (status) filter.status = status;
-    if (userId) filter.freelancerId = userId;
+    
+    // If userId is provided, use it; otherwise use authenticated user's ID
+    if (userId) {
+      filter.freelancerId = userId;
+    } else {
+      filter.freelancerId = authenticatedUserId;
+    }
 
     const tasks = await Task.find(filter)
-      .populate('jobId', 'title')
+      .populate('jobId', 'title description')
       .populate('freelancerId', 'displayName photoURL')
       .sort({ deadline: 1 });
 
@@ -173,6 +180,22 @@ export const getBurnoutWarning = async (req, res) => {
       warning: totalHours > hoursLimit,
       message: totalHours > hoursLimit ? `You've exceeded daily limit by ${totalHours - hoursLimit} hours` : 'You are within limits'
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getAcceptedTasksCount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const acceptedTasks = await Task.countDocuments({
+      freelancerId: userId,
+      status: 'accepted',
+      clientApproved: true
+    });
+
+    res.json({ count: acceptedTasks });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

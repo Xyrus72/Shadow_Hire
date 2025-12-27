@@ -149,7 +149,7 @@ const Footer = () => {
       {/* Glowing line animation at bottom */}
       <div className="h-1 bg-gradient-to-r from-transparent via-[#00ff41] to-transparent opacity-50 animate-pulse"></div>
 
-      <style jsx>{`
+      <style jsx="true">{`
         @keyframes scan {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
